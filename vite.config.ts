@@ -35,7 +35,7 @@ export default defineConfig({
         proxy: {
             '/baseURL': {
                 // target: 'https://uat.zhixunchelian.com/price_backend',
-                target: 'http://192.168.8.174:8098/price_backend',
+                target: 'http://192.168.8.174:8099/accurate_backend/',
                 changeOrigin: true,
                 rewrite: (path) => path.replace('/baseURL', '')
             }

@@ -1,17 +1,40 @@
 import request from '@/request/index'
+import { sessionManager } from '@/request/sessionManager';
 
-
-// Get verification code
-export const getVerifyCode = (jsessionid: string) => {
-  return request.get('/web/auth/getVerifyCode', {
-    responseType: 'blob',
-    headers: {
-      jsessionid: jsessionid
-    }
-  })
+// 获取验证码
+/**
+ * 获取验证码
+ * @returns {Promise<Blob>}
+ */
+export function getVerifyCode() {
+    return request({
+        url: '/web/auth/getVerifyCode',
+        method: 'get',
+        responseType: 'blob',
+        headers: {
+            'JSESSIONID': sessionManager.getSessionId()
+        }
+    })
 }
 
-// Login
-export const login = (data: any) => {
-  return request.post('/web/auth/login', data)
+// 登录
+/**
+ * 登录接口
+ * @param data 登录信息
+ * @returns {Promise}
+ */
+export function login(data: {
+    tencentCode: string;
+    userAccount: string;
+    cipher: string;
+    verifyCode: string;
+}) {
+    return request({
+        url: '/web/auth/login',
+        method: 'post',
+        data,
+        headers: {
+            'JSESSIONID': sessionManager.getSessionId()
+        }
+    })
 }
