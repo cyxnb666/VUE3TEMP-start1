@@ -19,8 +19,18 @@
               <a-input-password placeholder="请输入密码" v-model:value="loginForm.password" />
             </a-form-item>
 
-            <!-- 保留验证码位置的空间 -->
-            <div style="height: 56px; margin-bottom: 20px;"></div>
+            <a-form-item name="verifyCode" :rules="[{ required: true, message: '请输入验证码!' }]">
+              <div style="display: flex; align-items: center;">
+                <a-input placeholder="请输入验证码" v-model:value="loginForm.verifyCode" style="flex: 1; margin-right: 10px;" />
+                <img 
+                  v-if="verifyCodeUrl" 
+                  :src="verifyCodeUrl" 
+                  alt="验证码" 
+                  @click="refreshVerifyCode" 
+                  style="height: 40px; cursor: pointer;"
+                />
+              </div>
+            </a-form-item>
             
             <a-form-item :wrapper-col="{ span: 24 }">
               <a-button class="submit" type="primary" html-type="submit" :loading="loading">登 录</a-button>
@@ -33,40 +43,117 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
+import { getVerifyCode, login } from './api';
+import md5 from 'js-md5';
 
 const router = useRouter();
 
-interface FormState {
-  username: string;
-  password: string;
-}
+// Generate a unique ID for the session
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
+const uuid = generateUUID();
+const verifyCodeUrl = ref<string>('');
 const loading = ref<boolean>(false);
-const loginForm = reactive<FormState>({
+const intervalTimer = ref<number | null>(null);
+
+const loginForm = reactive({
   username: '',
   password: '',
+  verifyCode: '',
+  jsessionid: ''
 });
 
-const onFinish = async () => {
-    loading.value = true;
+// Refresh verification code
+const refreshVerifyCode = async () => {
+  try {
+    const jsessionid = new Date().getTime() + uuid;
+    loginForm.jsessionid = jsessionid;
     
-    // 模拟登录延迟
-    setTimeout(() => {
-        message.success('登录成功');
-        
-        // 直接跳转到主页
-        router.push('/dashboard');
-        
-        loading.value = false;
-    }, 500);
+    const response = await getVerifyCode(jsessionid);
+    
+    // Create a blob URL from the response
+    const blob = new Blob([response], { type: 'image/jpeg' });
+    
+    // Revoke the old URL if it exists
+    if (verifyCodeUrl.value) {
+      URL.revokeObjectURL(verifyCodeUrl.value);
+    }
+    
+    // Create a new object URL
+    verifyCodeUrl.value = URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Failed to refresh verification code:', error);
+    message.error('获取验证码失败，请重试');
+  }
+};
+
+const onFinish = async () => {
+  loading.value = true;
+  
+  try {
+    // Create the login payload with MD5 hashed password
+    const loginParams = {
+      userMobile: loginForm.username,
+      cipher: md5(loginForm.password),
+      verifyCode: loginForm.verifyCode,
+      jsessionid: loginForm.jsessionid
+    };
+    
+    // Call the login API
+    const response = await login(loginParams);
+    
+    // Handle successful login
+    message.success('登录成功');
+    
+    // Store the token in session storage
+    if (response && response.token) {
+      sessionStorage.setItem('token', response.token);
+    }
+    
+    // Store user info if available
+    if (response && response.userInfo) {
+      sessionStorage.setItem('userInfo', JSON.stringify(response.userInfo));
+    }
+    
+    // Navigate to the dashboard
+    router.push('/dashboard');
+  } catch (error) {
+    console.error('Login failed:', error);
+    message.error('登录失败，请检查账号密码和验证码');
+    refreshVerifyCode(); // Refresh code on failed login
+  } finally {
+    loading.value = false;
+  }
 };
 
 const onFinishFailed = () => {
   message.error('请填写完整的登录信息');
 };
+
+// Initialize verification code on component mount
+onMounted(() => {
+  refreshVerifyCode();
+  
+  // Refresh the verification code every 2 minutes
+  intervalTimer.value = window.setInterval(() => {
+    refreshVerifyCode();
+  }, 1000 * 60 * 2);
+});
+
+// Clean up interval on component unmount
+onBeforeUnmount(() => {
+  if (intervalTimer.value) {
+    clearInterval(intervalTimer.value);
+  }
+});
 </script>
 
 <style lang="scss" scoped>

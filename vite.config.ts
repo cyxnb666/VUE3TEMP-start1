@@ -34,7 +34,8 @@ export default defineConfig({
         cors: true,
         proxy: {
             '/baseURL': {
-                target: 'https://uat.zhixunchelian.com/price_backend',
+                // target: 'https://uat.zhixunchelian.com/price_backend',
+                target: 'http://192.168.8.174:8098/price_backend',
                 changeOrigin: true,
                 rewrite: (path) => path.replace('/baseURL', '')
             }

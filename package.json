@@ -13,6 +13,7 @@
     "autofit.js": "^3.2.3",
     "axios": "^1.6.2",
     "buffer": "^6.0.3",
+    "js-md5": "^0.8.3",
     "lib-flexible": "^0.3.2",
     "lodash": "^4.17.21",
     "nprogress": "^0.2.0",

@@ -1,64 +1,70 @@
 <template>
-    <div class="dashboard-container">
-        <a-row :gutter="16">
-            <a-col :span="6" v-for="card in cards" :key="card.title">
-                <a-card :title="card.title" :bordered="false">
-                    <template #extra><a href="#">更多</a></template>
-                    <p>{{ card.value }}</p>
-                </a-card>
-            </a-col>
-        </a-row>
+  <div class="dashboard-container">
+    <a-row :gutter="16">
+      <a-col :span="24">
+        <a-card title="视频预览" :bordered="false">
+          <!-- Video player will be displayed here -->
+          <div v-if="loading">加载中...</div>
+          <div v-else-if="error">{{ error }}</div>
+          <video 
+            v-else-if="videoUrl" 
+            controls 
+            style="max-width: 100%;"
+            :src="videoUrl"
+          ></video>
+        </a-card>
+      </a-col>
+    </a-row>
 
-        <a-divider />
+    <!-- Keep the original content -->
+    <a-divider />
 
-        <a-row :gutter="16">
-            <a-col :span="12">
-                <a-card title="最近活动" :bordered="false">
-                    <a-list item-layout="horizontal" :data-source="activities">
-                        <template #renderItem="{ item }">
-                            <a-list-item>
-                                <a-list-item-meta :title="item.title" :description="item.time">
-                                    <template #avatar>
-                                        <a-avatar :style="{ backgroundColor: item.color }">{{ item.avatar }}</a-avatar>
-                                    </template>
-                                </a-list-item-meta>
-                            </a-list-item>
-                        </template>
-                    </a-list>
-                </a-card>
-            </a-col>
-            <a-col :span="12">
-                <a-card title="快速操作" :bordered="false">
-                    <a-button type="primary" style="margin-right: 8px">添加用户</a-button>
-                    <a-button style="margin-right: 8px">导出数据</a-button>
-                    <a-button>系统设置</a-button>
-
-                    <a-divider />
-
-                    <a-progress :percent="75" status="active" />
-                    <div>当前系统资源使用率: 75%</div>
-                </a-card>
-            </a-col>
-        </a-row>
-    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { getFilePreview } from './api';
 
-const cards = ref([
-    { title: '总用户数', value: '1,293' },
-    { title: '本周活跃用户', value: '758' },
-    { title: '系统消息', value: '12' },
-    { title: '待处理任务', value: '5' }
-]);
 
-const activities = ref([
-    { title: '用户张三登录了系统', time: '刚刚', avatar: '张', color: '#1890ff' },
-    { title: '新增数据58条', time: '10分钟前', avatar: '新', color: '#52c41a' },
-    { title: '系统自动备份完成', time: '30分钟前', avatar: '备', color: '#faad14' },
-    { title: '管理员更新了系统配置', time: '1小时前', avatar: '配', color: '#f5222d' }
-]);
+// Video state
+const videoUrl = ref<string>('');
+const loading = ref<boolean>(false);
+const error = ref<string>('');
+
+// Fetch and display the video
+const fetchVideo = async () => {
+  loading.value = true;
+  error.value = '';
+  
+  try {
+    // Use the provided file key
+    const response = await getFilePreview('1911608101312794624.mp4');
+    
+    // Create a blob from the response
+    const blob = new Blob([response], { type: 'video/mp4' });
+    
+    // Create a URL for the blob
+    videoUrl.value = URL.createObjectURL(blob);
+  } catch (err) {
+    console.error('Failed to load video:', err);
+    error.value = '视频加载失败，请稍后再试';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Clean up resources when component is destroyed
+onBeforeUnmount(() => {
+  if (videoUrl.value) {
+    URL.revokeObjectURL(videoUrl.value);
+  }
+});
+
+// Fetch video when component is mounted
+onMounted(() => {
+  fetchVideo();
+});
 </script>
 
 <style scoped>
