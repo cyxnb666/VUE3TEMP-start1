@@ -7,6 +7,6 @@ export const getFilePreview = (primaryKey: string) => {
       primaryKey: primaryKey
     }
   }, {
-    responseType: 'arraybuffer'
+    responseType: 'blob'
   })
 }
